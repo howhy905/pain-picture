@@ -133,7 +133,9 @@ header h1 {
     background: #fafafa;
     border-radius: 12px;
     padding: 20px;
-    min-height: 400px;
+    /* 固定寬高比 1:2，與 viewBox 200x400 一致，避免變形 */
+    aspect-ratio: 200 / 400;
+    max-height: 70vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -142,19 +144,26 @@ header h1 {
 .body-view {
     display: none;
     width: 100%;
-    max-width: 300px;
+    height: 100%;
+    max-width: 200px;
     margin: 0 auto;
 }
 
 .body-view.active {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .body-view svg {
     width: 100%;
-    height: auto;
+    height: 100%;
+    max-height: 100%;
+    object-fit: contain;
     cursor: crosshair;
     touch-action: none;
+    /* 保持 viewBox 比例，不拉伸 */
+    flex-shrink: 0;
 }
 
 .body-view svg path,
@@ -302,7 +311,7 @@ header h1 {
 
     .body-container {
         padding: 15px;
-        min-height: 350px;
+        max-height: 60vh;
     }
 }
 

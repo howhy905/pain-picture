@@ -48,22 +48,26 @@ class PainMarkerApp {
             });
         });
 
-        // 身體圖示點擊事件
+        // 身體圖示點擊／觸控事件（手機與桌面皆可用）
         const frontSvg = document.getElementById('front-body');
         const backSvg = document.getElementById('back-body');
 
         [frontSvg, backSvg].forEach(svg => {
-            svg.addEventListener('click', (e) => this.handleBodyClick(e, svg));
+            const view = svg.id === 'front-body' ? 'front' : 'back';
+            const handleTap = (clientX, clientY) => {
+                const coords = this.getSVGCoords(svg, clientX, clientY);
+                if (coords) this.addPainMarker(coords.x, coords.y, view);
+            };
+            svg.addEventListener('click', (e) => {
+                if (e.target.classList.contains('pain-marker-svg')) return;
+                handleTap(e.clientX, e.clientY);
+            });
             svg.addEventListener('touchstart', (e) => {
+                if (e.target.classList.contains('pain-marker-svg')) return;
                 e.preventDefault();
                 const touch = e.touches[0];
-                const rect = svg.getBoundingClientRect();
-                const point = svg.createSVGPoint();
-                point.x = touch.clientX - rect.left;
-                point.y = touch.clientY - rect.top;
-                const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
-                this.addPainMarker(svgPoint.x, svgPoint.y, svg.id === 'front-body' ? 'front' : 'back');
-            });
+                handleTap(touch.clientX, touch.clientY);
+            }, { passive: false });
         });
 
         // 清除按鈕
@@ -76,14 +80,23 @@ class PainMarkerApp {
         document.getElementById('share-btn').addEventListener('click', () => this.shareImage());
     }
 
-    handleBodyClick(e, svg) {
+    /**
+     * 將螢幕座標轉成 SVG viewBox 座標（0~200, 0~400）
+     * 手動計算 preserveAspectRatio="xMidYMid meet" 的對應，避免手機上 getScreenCTM 不準
+     */
+    getSVGCoords(svg, clientX, clientY) {
         const rect = svg.getBoundingClientRect();
-        const point = svg.createSVGPoint();
-        point.x = e.clientX - rect.left;
-        point.y = e.clientY - rect.top;
-        const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
-        const view = svg.id === 'front-body' ? 'front' : 'back';
-        this.addPainMarker(svgPoint.x, svgPoint.y, view);
+        const vbW = 200, vbH = 400;
+        const scale = Math.min(rect.width / vbW, rect.height / vbH);
+        const drawW = vbW * scale, drawH = vbH * scale;
+        const offsetX = (rect.width - drawW) / 2;
+        const offsetY = (rect.height - drawH) / 2;
+        const x = clientX - rect.left - offsetX;
+        const y = clientY - rect.top - offsetY;
+        const svgX = x / scale;
+        const svgY = y / scale;
+        if (svgX < 0 || svgX > vbW || svgY < 0 || svgY > vbH) return null;
+        return { x: svgX, y: svgY };
     }
 
     addPainMarker(x, y, view) {
@@ -130,11 +143,17 @@ class PainMarkerApp {
             circle.setAttribute('class', 'pain-marker-svg');
             circle.style.cursor = 'pointer';
             
-            // 點擊標記可刪除
-            circle.addEventListener('click', (e) => {
+            const removeThis = (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 this.removeMarker(marker.id, view);
-            });
+            };
+            circle.addEventListener('click', removeThis);
+            circle.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            }, { passive: false });
+            circle.addEventListener('touchend', removeThis, { passive: false });
 
             svg.appendChild(circle);
         });
